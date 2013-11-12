@@ -1,16 +1,16 @@
-# This function is called inside the OS specific contexts
-def general_status_specs
-  it { should contain_apache__mod("status") }
+require 'spec_helper'
 
+# Helper function for testing the contents of `status.conf`
+def status_conf_spec(allow_from, extended_status)
   it do
     should contain_file("status.conf").with_content(
       "<Location /server-status>\n"\
       "    SetHandler server-status\n"\
       "    Order deny,allow\n"\
       "    Deny from all\n"\
-      "    Allow from 127.0.0.1 ::1\n"\
+      "    Allow from #{Array(allow_from).join(' ')}\n"\
       "</Location>\n"\
-      "ExtendedStatus On\n"\
+      "ExtendedStatus #{extended_status}\n"\
       "\n"\
       "<IfModule mod_proxy.c>\n"\
       "    # Show Proxy LoadBalancer status in mod_status\n"\
@@ -34,17 +34,20 @@ describe 'apache::mod::status', :type => :class do
       }
     end
 
-    # Load the more generic tests for this context
-    general_status_specs()
+    it { should contain_apache__mod("status") }
+
+    status_conf_spec(["127.0.0.1", "::1"], "On")
 
     it { should contain_file("status.conf").with({
       :ensure => 'file',
       :path   => '/etc/apache2/mods-available/status.conf',
     } ) }
+
     it { should contain_file("status.conf symlink").with({
       :ensure => 'link',
       :path   => '/etc/apache2/mods-enabled/status.conf',
     } ) }
+
   end
 
   context "on a RedHat OS with default params" do
@@ -56,13 +59,15 @@ describe 'apache::mod::status', :type => :class do
       }
     end
 
-    # Load the more generic tests for this context
-    general_status_specs()
+    it { should contain_apache__mod("status") }
+
+    status_conf_spec(["127.0.0.1", "::1"], "On")
 
     it { should contain_file("status.conf").with_path("/etc/httpd/conf.d/status.conf") }
+
   end
 
-  context "with $allow_from => ['10.10.10.10','11.11.11.11'], $extended_status => 'Off'" do
+  context "with custom parameters $allow_from => ['10.10.10.10','11.11.11.11'], $extended_status => 'Off'" do
     let :facts do
       {
         :osfamily               => 'Debian',
@@ -76,25 +81,30 @@ describe 'apache::mod::status', :type => :class do
         :extended_status => 'Off',
       }
     end
-    it do
-      should contain_file("status.conf").with_content(
-        "<Location /server-status>\n"\
-        "    SetHandler server-status\n"\
-        "    Order deny,allow\n"\
-        "    Deny from all\n"\
-        "    Allow from 10.10.10.10 11.11.11.11\n"\
-        "</Location>\n"\
-        "ExtendedStatus Off\n"\
-        "\n"\
-        "<IfModule mod_proxy.c>\n"\
-        "    # Show Proxy LoadBalancer status in mod_status\n"\
-        "    ProxyStatus On\n"\
-        "</IfModule>\n"
-      )
+
+    status_conf_spec(["10.10.10.10", "11.11.11.11"], "Off")
+
+  end
+
+  context "with valid parameter type $allow_from => ['10.10.10.10']" do
+    let :facts do
+      {
+        :osfamily               => 'Debian',
+        :operatingsystemrelease => '6',
+        :concat_basedir         => '/dne',
+      }
+    end
+    let :params do
+      { :allow_from => ['10.10.10.10'] }
+    end
+    it 'should expect to succeed array validation' do
+      expect {
+        should contain_file("status.conf")
+      }.not_to raise_error()
     end
   end
 
-  context "with $allow_from => '10.10.10.10'" do
+  context "with invalid parameter type $allow_from => '10.10.10.10'" do
     let :facts do
       {
         :osfamily               => 'Debian',
@@ -112,21 +122,44 @@ describe 'apache::mod::status', :type => :class do
     end
   end
 
-  context "with $extended_status => 'Yes'" do
-    let :facts do
-      {
-        :osfamily               => 'Debian',
-        :operatingsystemrelease => '6',
-        :concat_basedir         => '/dne',
-      }
+  # Only On or Off are valid options
+  ['On', 'Off'].each do |valid_param|
+    context "with valid value $extended_status => '#{valid_param}'" do
+      let :facts do
+        {
+          :osfamily               => 'Debian',
+          :operatingsystemrelease => '6',
+          :concat_basedir         => '/dne',
+        }
+      end
+      let :params do
+        { :extended_status => valid_param }
+      end
+      it 'should expect to succeed regular expression validation' do
+        expect {
+          should contain_file("status.conf")
+        }.not_to raise_error()
+      end
     end
-    let :params do
-      { :extended_status => 'Yes' }
-    end
-    it 'should expect to fail regular expression validation' do
-      expect {
-        should contain_file("status.conf")
-      }.to raise_error(Puppet::Error)
+  end
+
+  ['Yes', 'No'].each do |invalid_param|
+    context "with invalid value $extended_status => '#{invalid_param}'" do
+      let :facts do
+        {
+          :osfamily               => 'Debian',
+          :operatingsystemrelease => '6',
+          :concat_basedir         => '/dne',
+        }
+      end
+      let :params do
+        { :extended_status => invalid_param }
+      end
+      it 'should expect to fail regular expression validation' do
+        expect {
+          should contain_file("status.conf")
+        }.to raise_error(Puppet::Error)
+      end
     end
   end
 

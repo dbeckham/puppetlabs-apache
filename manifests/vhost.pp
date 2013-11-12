@@ -65,7 +65,7 @@ define apache::vhost(
     $ip_based                    = false,
     $add_listen                  = true,
     $docroot_owner               = 'root',
-    $docroot_group               = 'root',
+    $docroot_group               = $apache::params::root_group,
     $serveradmin                 = false,
     $ssl                         = false,
     $ssl_cert                    = $apache::default_ssl_cert,
@@ -174,6 +174,8 @@ define apache::vhost(
 
   if $ssl {
     include apache::mod::ssl
+    # Required for the AddType lines.
+    include apache::mod::mime
   }
 
   if $virtual_docroot {
@@ -209,7 +211,7 @@ define apache::vhost(
   } elsif $access_log_pipe {
     $access_log_destination = "\"${access_log_pipe}\""
   } elsif $access_log_syslog {
-    $access_log_destination = "${access_log_syslog}"
+    $access_log_destination = $access_log_syslog
   } else {
     if $ssl {
       $access_log_destination = "${logroot}/${servername}_access_ssl.log"
@@ -223,7 +225,7 @@ define apache::vhost(
   } elsif $error_log_pipe {
     $error_log_destination = "\"${error_log_pipe}\""
   } elsif $error_log_syslog {
-    $error_log_destination = "${error_log_syslog}"
+    $error_log_destination = $error_log_syslog
   } else {
     if $ssl {
       $error_log_destination = "${logroot}/${servername}_error_ssl.log"
@@ -420,7 +422,7 @@ define apache::vhost(
     path    => "${apache::vhost_dir}/${priority_real}-${filename}.conf",
     content => template('apache/vhost.conf.erb'),
     owner   => 'root',
-    group   => 'root',
+    group   => $apache::params::root_group,
     mode    => '0644',
     require => [
       Package['httpd'],
@@ -440,11 +442,10 @@ define apache::vhost(
       path    => "${vhost_enable_dir}/${priority_real}-${filename}.conf",
       target  => "${apache::vhost_dir}/${priority_real}-${filename}.conf",
       owner   => 'root',
-      group   => 'root',
+      group   => $apache::params::root_group,
       mode    => '0644',
       require => File["${priority_real}-${filename}.conf"],
       notify  => Service['httpd'],
     }
   }
 }
-

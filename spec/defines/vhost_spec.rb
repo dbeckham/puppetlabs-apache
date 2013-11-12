@@ -49,6 +49,23 @@ describe 'apache::vhost', :type => :define do
         :target => '/etc/apache2/sites-available/25-rspec.example.com.conf'
       ) }
     end
+    context "on FreeBSD systems" do
+      let :default_facts do
+        {
+          :osfamily               => 'FreeBSD',
+          :operatingsystemrelease => '9',
+          :concat_basedir         => '/dne',
+        }
+      end
+      let :params do default_params end
+      let :facts do default_facts end
+      it { should include_class("apache") }
+      it { should include_class("apache::params") }
+      it { should contain_file("25-rspec.example.com.conf").with(
+        :ensure => 'present',
+        :path   => '/usr/local/etc/apache22/Vhosts/25-rspec.example.com.conf'
+      ) }
+    end
   end
   describe 'os-independent items' do
     let :facts do
@@ -445,6 +462,36 @@ describe 'apache::vhost', :type => :define do
             '  <Directory /opt/app>',
             '  <Directory /var/www>',
             '  <Directory /rspec/docroot>',
+          ],
+        },
+        {
+          :title => 'should accept location for provider',
+          :attr  => 'directories',
+          :value => {
+            'path'     => '/',
+            'provider' => 'location',
+          },
+          :notmatch => '    AllowOverride None',
+          :match => [
+            '  <Location />',
+            '    Order allow,deny',
+            '    Allow from all',
+            '  </Location>',
+          ],
+        },
+        {
+          :title => 'should accept files for provider',
+          :attr  => 'directories',
+          :value => {
+            'path'     => 'index.html',
+            'provider' => 'files',
+          },
+          :notmatch => '    AllowOverride None',
+          :match => [
+            '  <Files index.html>',
+            '    Order allow,deny',
+            '    Allow from all',
+            '  </Files>',
           ],
         },
         {

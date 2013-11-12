@@ -1,11 +1,13 @@
 <% if @_directories and ! @_directories.empty? -%>
   <%- [@_directories].flatten.compact.each do |directory| -%>
-    <%- if directory['path'] and directory['path'] != ''-%>
+    <%- if directory['path'] and directory['path'] != '' -%>
 
-  <%- provider = 'Directory' -%>
   <%- if directory['provider'] and [ 'directory', 'location', 'files' ].include?(directory['provider']) -%>
     <%- provider = directory['provider'].capitalize -%>
+  <%- else -%>
+    <%- provider = 'Directory' -%>
   <%- end -%>
+
   <<%= provider + ' ' + directory['path'] %>>
     <%- if directory['headers'] -%>
       <%- Array(directory['headers']).each do |header| -%>
@@ -15,10 +17,12 @@
     <%- if directory['options'] -%>
     Options <%= Array(directory['options']).join(' ') %>
     <%- end -%>
-    <%- if directory['allow_override'] -%>
+    <%- if directory['provider'] == 'directory' %>
+      <%- if directory['allow_override'] -%>
     AllowOverride <%= Array(directory['allow_override']).join(' ') %>
-    <%- else -%>
+      <%- elsif provider == 'Directory' -%>
     AllowOverride None
+      <%- end -%>
     <%- end -%>
     <%- if directory['order'] and directory['order'] != '' -%>
     Order <%= Array(directory['order']).join(',') %>
@@ -86,10 +90,25 @@
     <%- if directory['fallbackresource'] -%>
     FallbackResource <%= directory['fallbackresource'] %>
     <%- end -%>
+    <%- if directory['expires_active'] -%>
+    ExpiresActive <%= directory['expires_active'] %>
+    <%- end -%>
+    <%- if directory['expires_default'] -%>
+    ExpiresDefault <%= directory['expires_default'] %>
+    <%- end -%>
+    <%- if directory['expires_by_type'] -%>
+    <%- Array(directory['expires_by_type']).each do |rule| -%>
+    ExpiresByType <%= rule %>
+    <%- end -%>
+    <%- end -%>
+    <%- if directory['force_type'] -%>
+    ForceType <%= directory['force_type'] %>
+    <%- end -%>
     <%- if directory['custom_fragment'] -%>
     <%= directory['custom_fragment'] %>
     <%- end -%>
   </<%= provider %>>
+
     <%- end -%>
   <%- end -%>
 <% end -%>
