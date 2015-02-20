@@ -1,11 +1,16 @@
 class apache::mod::event (
-  $startservers        = '2',
-  $maxclients          = '150',
-  $minsparethreads     = '25',
-  $maxsparethreads     = '75',
-  $threadsperchild     = '25',
-  $maxrequestsperchild = '0',
-  $serverlimit         = '25',
+  $startservers           = '2',
+  $maxclients             = '150',
+  $minsparethreads        = '25',
+  $maxsparethreads        = '75',
+  $threadsperchild        = '25',
+  $maxrequestsperchild    = '0',
+  $serverlimit            = '25',
+  $apache_version         = $::apache::apache_version,
+  $threadlimit            = '64',
+  $listenbacklog          = '511',
+  $maxrequestworkers      = '256',
+  $maxconnectionsperchild = '0',
 ) {
   if defined(Class['apache::mod::itk']) {
     fail('May not include both apache::mod::event and apache::mod::itk on the same node')
@@ -21,7 +26,7 @@ class apache::mod::event (
   }
   File {
     owner => 'root',
-    group => $apache::params::root_group,
+    group => $::apache::params::root_group,
     mode  => '0644',
   }
 
@@ -33,18 +38,25 @@ class apache::mod::event (
   # - $threadsperchild
   # - $maxrequestsperchild
   # - $serverlimit
-  file { "${apache::mod_dir}/event.conf":
+  file { "${::apache::mod_dir}/event.conf":
     ensure  => file,
     content => template('apache/mod/event.conf.erb'),
-    require => Exec["mkdir ${apache::mod_dir}"],
-    before  => File[$apache::mod_dir],
-    notify  => Service['httpd'],
+    require => Exec["mkdir ${::apache::mod_dir}"],
+    before  => File[$::apache::mod_dir],
+    notify  => Class['apache::service'],
   }
 
   case $::osfamily {
-    'freebsd' : {
-      class { 'apache::package':
-        mpm_module => 'event'
+    'redhat': {
+      if versioncmp($apache_version, '2.4') >= 0 {
+        apache::mpm{ 'event':
+          apache_version => $apache_version,
+        }
+      }
+    }
+    'debian','freebsd' : {
+      apache::mpm{ 'event':
+        apache_version => $apache_version,
       }
     }
     default: {

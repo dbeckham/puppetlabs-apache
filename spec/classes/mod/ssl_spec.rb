@@ -1,3 +1,5 @@
+require 'spec_helper'
+
 describe 'apache::mod::ssl', :type => :class do
   let :pre_condition do
     'include apache'
@@ -8,6 +10,11 @@ describe 'apache::mod::ssl', :type => :class do
         :osfamily               => 'Magic',
         :operatingsystemrelease => '0',
         :concat_basedir         => '/dne',
+        :operatingsystem        => 'Magic',
+        :id                     => 'root',
+        :kernel                 => 'Linux',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        :is_pe                  => false,
       }
     end
     it { expect { subject }.to raise_error(Puppet::Error, /Unsupported osfamily:/) }
@@ -19,11 +26,25 @@ describe 'apache::mod::ssl', :type => :class do
         :osfamily               => 'RedHat',
         :operatingsystemrelease => '6',
         :concat_basedir         => '/dne',
+        :operatingsystem        => 'RedHat',
+        :id                     => 'root',
+        :kernel                 => 'Linux',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        :is_pe                  => false,
       }
     end
-    it { should include_class('apache::params') }
-    it { should contain_apache__mod('ssl') }
-    it { should contain_package('mod_ssl') }
+    it { is_expected.to contain_class('apache::params') }
+    it { is_expected.to contain_apache__mod('ssl') }
+    it { is_expected.to contain_package('mod_ssl') }
+    context 'with a custom package_name parameter' do
+      let :params do
+        { :package_name => 'httpd24-mod_ssl' }
+      end
+      it { is_expected.to contain_class('apache::params') }
+      it { is_expected.to contain_apache__mod('ssl') }
+      it { is_expected.to contain_package('httpd24-mod_ssl') }
+      it { is_expected.not_to contain_package('mod_ssl') }
+    end
   end
 
   context 'on a Debian OS' do
@@ -32,11 +53,17 @@ describe 'apache::mod::ssl', :type => :class do
         :osfamily               => 'Debian',
         :operatingsystemrelease => '6',
         :concat_basedir         => '/dne',
+        :lsbdistcodename        => 'squeeze',
+        :operatingsystem        => 'Debian',
+        :id                     => 'root',
+        :kernel                 => 'Linux',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        :is_pe                  => false,
       }
     end
-    it { should include_class('apache::params') }
-    it { should contain_apache__mod('ssl') }
-    it { should_not contain_package('libapache2-mod-ssl') }
+    it { is_expected.to contain_class('apache::params') }
+    it { is_expected.to contain_apache__mod('ssl') }
+    it { is_expected.not_to contain_package('libapache2-mod-ssl') }
   end
 
   context 'on a FreeBSD OS' do
@@ -45,9 +72,57 @@ describe 'apache::mod::ssl', :type => :class do
         :osfamily               => 'FreeBSD',
         :operatingsystemrelease => '9',
         :concat_basedir         => '/dne',
+        :operatingsystem        => 'FreeBSD',
+        :id                     => 'root',
+        :kernel                 => 'FreeBSD',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        :is_pe                  => false,
       }
     end
-    it { should include_class('apache::params') }
-    it { should contain_apache__mod('ssl') }
+    it { is_expected.to contain_class('apache::params') }
+    it { is_expected.to contain_apache__mod('ssl') }
+  end
+
+  # Template config doesn't vary by distro
+  context "on all distros" do
+    let :facts do
+      {
+        :osfamily               => 'RedHat',
+        :operatingsystem        => 'CentOS',
+        :operatingsystemrelease => '6',
+        :kernel                 => 'Linux',
+        :id                     => 'root',
+        :concat_basedir         => '/dne',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        :is_pe                  => false,
+      }
+    end
+
+    context 'not setting ssl_pass_phrase_dialog' do
+      it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLPassPhraseDialog builtin$/)}
+    end
+
+    context 'setting ssl_pass_phrase_dialog' do
+      let :params do
+        {
+          :ssl_pass_phrase_dialog => 'exec:/path/to/program',
+        }
+      end
+      it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLPassPhraseDialog exec:\/path\/to\/program$/)}
+    end
+
+    context 'setting ssl_random_seeds' do
+      let :params do
+        {
+          :ssl_random_seeds => ['startup builtin',
+                                'startup file:/dev/random 256',
+                                'connect file:/dev/urandom 1024' ],
+         }
+      end
+      it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLRandomSeed startup builtin$/)}
+      it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLRandomSeed startup file:\/dev\/random 256$/)}
+      it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLRandomSeed connect file:\/dev\/urandom 1024$/)}
+    end
+
   end
 end

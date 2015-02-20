@@ -1,3 +1,5 @@
+require 'spec_helper'
+
 describe 'apache::mod::peruser', :type => :class do
   let :pre_condition do
     'class { "apache": mpm_module => false, }'
@@ -6,12 +8,19 @@ describe 'apache::mod::peruser', :type => :class do
     let :facts do
       {
         :osfamily               => 'FreeBSD',
-        :operatingsystemrelease => '9',
+        :operatingsystemrelease => '10',
         :concat_basedir         => '/dne',
+        :operatingsystem        => 'FreeBSD',
+        :id                     => 'root',
+        :kernel                 => 'FreeBSD',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        :is_pe                  => false,
       }
     end
-    it { should include_class("apache::params") }
-    it { should_not contain_apache__mod('peruser') }
-    it { should contain_file("/usr/local/etc/apache22/Modules/peruser.conf").with_ensure('file') }
+    it do
+      expect {
+        should compile
+      }.to raise_error(Puppet::Error, /Unsupported osfamily FreeBSD/)
+    end
   end
 end
