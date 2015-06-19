@@ -9,7 +9,7 @@ class apache::mod::event (
   $apache_version         = $::apache::apache_version,
   $threadlimit            = '64',
   $listenbacklog          = '511',
-  $maxrequestworkers      = '256',
+  $maxrequestworkers      = '250',
   $maxconnectionsperchild = '0',
 ) {
   if defined(Class['apache::mod::itk']) {
@@ -57,6 +57,11 @@ class apache::mod::event (
     'debian','freebsd' : {
       apache::mpm{ 'event':
         apache_version => $apache_version,
+      }
+    }
+    'gentoo': {
+      ::portage::makeconf { 'apache2_mpms':
+        content => 'event',
       }
     }
     default: {

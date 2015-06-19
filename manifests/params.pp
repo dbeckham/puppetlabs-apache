@@ -77,6 +77,11 @@ class apache::params inherits ::apache::version {
       },
       'fastcgi'     => 'mod_fastcgi',
       'fcgid'       => 'mod_fcgid',
+      'geoip'       => 'mod_geoip',
+      'ldap'        => $::apache::version::distrelease ? {
+        '7'     => 'mod_ldap',
+        default => undef,
+      },
       'pagespeed'   => 'mod-pagespeed-stable',
       'passenger'   => 'mod_passenger',
       'perl'        => 'mod_perl',
@@ -164,7 +169,6 @@ class apache::params inherits ::apache::version {
     $logroot_mode        = undef
     $lib_path            = '/usr/lib/apache2/modules'
     $mpm_module          = 'worker'
-    $dev_packages        = ['libaprutil1-dev', 'libapr1-dev', 'apache2-prefork-dev']
     $default_ssl_cert    = '/etc/ssl/certs/ssl-cert-snakeoil.pem'
     $default_ssl_key     = '/etc/ssl/private/ssl-cert-snakeoil.key'
     $ssl_certs_dir       = '/etc/ssl/certs'
@@ -230,6 +234,11 @@ class apache::params inherits ::apache::version {
       'base_rules/modsecurity_crs_60_correlation.conf'
     ]
     $error_documents_path = '/usr/share/apache2/error'
+    if ($::operatingsystem == 'Ubuntu' and versioncmp($::operatingsystemrelease, '13.10') >= 0) or ($::operatingsystem == 'Debian' and versioncmp($::operatingsystemrelease, '8') >= 0) {
+      $dev_packages        = ['libaprutil1-dev', 'libapr1-dev', 'apache2-dev']
+    } else {
+      $dev_packages        = ['libaprutil1-dev', 'libapr1-dev', 'apache2-prefork-dev']
+    }
 
     #
     # Passenger-specific settings
@@ -347,6 +356,127 @@ class apache::params inherits ::apache::version {
     $wsgi_socket_prefix   = undef
     $docroot              = '/usr/local/www/apache24/data'
     $error_documents_path = '/usr/local/www/apache24/error'
+  } elsif $::osfamily == 'Gentoo' {
+    $user             = 'apache'
+    $group            = 'apache'
+    $root_group       = 'wheel'
+    $apache_name      = 'www-servers/apache'
+    $service_name     = 'apache2'
+    $httpd_dir        = '/etc/apache2'
+    $server_root      = '/var/www'
+    $conf_dir         = $httpd_dir
+    $confd_dir        = "${httpd_dir}/conf.d"
+    $mod_dir          = "${httpd_dir}/modules.d"
+    $mod_enable_dir   = undef
+    $vhost_dir        = "${httpd_dir}/vhosts.d"
+    $vhost_enable_dir = undef
+    $conf_file        = 'httpd.conf'
+    $ports_file       = "${conf_dir}/ports.conf"
+    $logroot          = '/var/log/apache2'
+    $logroot_mode     = undef
+    $lib_path         = '/usr/lib/apache2/modules'
+    $mpm_module       = 'prefork'
+    $dev_packages     = undef
+    $default_ssl_cert = '/etc/ssl/apache2/server.crt'
+    $default_ssl_key  = '/etc/ssl/apache2/server.key'
+    $ssl_certs_dir    = '/etc/ssl/apache2'
+    $passenger_root   = '/usr'
+    $passenger_ruby   = '/usr/bin/ruby'
+    $passenger_conf_file = 'passenger.conf'
+    $passenger_conf_package_file = undef
+    $passenger_default_ruby = undef
+    $suphp_addhandler = 'x-httpd-php'
+    $suphp_engine     = 'off'
+    $suphp_configpath = '/etc/php5/apache2'
+    $mod_packages     = {
+      # NOTE: I list here only modules that are not included in www-servers/apache
+      'auth_kerb'  => 'www-apache/mod_auth_kerb',
+      'fcgid'      => 'www-apache/mod_fcgid',
+      'passenger'  => 'www-apache/passenger',
+      'perl'       => 'www-apache/mod_perl',
+      'php5'       => 'dev-lang/php',
+      'proxy_html' => 'www-apache/mod_proxy_html',
+      'proxy_fcgi' => 'www-apache/mod_proxy_fcgi',
+      'python'     => 'www-apache/mod_python',
+      'wsgi'       => 'www-apache/mod_wsgi',
+      'dav_svn'    => 'dev-vcs/subversion',
+      'xsendfile'  => 'www-apache/mod_xsendfile',
+      'rpaf'       => 'www-apache/mod_rpaf',
+      'xml2enc'    => 'www-apache/mod_xml2enc',
+    }
+    $mod_libs         = {
+      'php5' => 'libphp5.so',
+    }
+    $conf_template        = 'apache/httpd.conf.erb'
+    $keepalive            = 'Off'
+    $keepalive_timeout    = 15
+    $max_keepalive_requests = 100
+    $fastcgi_lib_path     = undef # TODO: revisit
+    $mime_support_package = 'app-misc/mime-types'
+    $mime_types_config    = '/etc/mime.types'
+    $wsgi_socket_prefix   = undef
+    $docroot              = '/var/www/localhost/htdocs'
+    $error_documents_path = '/usr/share/apache2/error'
+  } elsif $::osfamily == 'Suse' {
+    $user                = 'wwwrun'
+    $group               = 'wwwrun'
+    $root_group          = 'root'
+    $apache_name         = 'apache2'
+    $service_name        = 'apache2'
+    $httpd_dir           = '/etc/apache2'
+    $server_root         = '/etc/apache2'
+    $conf_dir            = $httpd_dir
+    $confd_dir           = "${httpd_dir}/conf.d"
+    $mod_dir             = "${httpd_dir}/mods-available"
+    $mod_enable_dir      = "${httpd_dir}/mods-enabled"
+    $vhost_dir           = "${httpd_dir}/sites-available"
+    $vhost_enable_dir    = "${httpd_dir}/sites-enabled"
+    $conf_file           = 'httpd.conf'
+    $ports_file          = "${conf_dir}/ports.conf"
+    $logroot             = '/var/log/apache2'
+    $logroot_mode        = undef
+    $lib_path            = '/usr/lib64/apache2-prefork/'
+    $mpm_module          = 'prefork'
+    $default_ssl_cert    = '/etc/ssl/certs/ssl-cert-snakeoil.pem'
+    $default_ssl_key     = '/etc/ssl/private/ssl-cert-snakeoil.key'
+    $ssl_certs_dir       = '/etc/ssl/certs'
+    $suphp_addhandler    = 'x-httpd-php'
+    $suphp_engine        = 'off'
+    $suphp_configpath    = '/etc/php5/apache2'
+    $mod_packages        = {
+      'auth_kerb'   => 'apache2-mod_auth_kerb',
+      'fcgid'       => 'apache2-mod_fcgid',
+      'perl'        => 'apache2-mod_perl',
+      'php5'        => 'apache2-mod_php53',
+      'python'      => 'apache2-mod_python',
+    }
+    $mod_libs             = {
+      'php5' => 'libphp5.so',
+    }
+    $conf_template          = 'apache/httpd.conf.erb'
+    $keepalive              = 'Off'
+    $keepalive_timeout      = 15
+    $max_keepalive_requests = 100
+    $fastcgi_lib_path       = '/var/lib/apache2/fastcgi'
+    $mime_support_package = 'aaa_base'
+    $mime_types_config    = '/etc/mime.types'
+    $docroot              = '/srv/www'
+    $cas_cookie_path      = '/var/cache/apache2/mod_auth_cas/'
+    $error_documents_path = '/usr/share/apache2/error'
+    $dev_packages        = ['libapr-util1-devel', 'libapr1-devel']
+
+    #
+    # Passenger-specific settings
+    #
+
+    $passenger_conf_file          = 'passenger.conf'
+    $passenger_conf_package_file  = undef
+
+    $passenger_root               = '/usr'
+    $passenger_ruby               = '/usr/bin/ruby'
+    $passenger_default_ruby       = undef
+    $wsgi_socket_prefix           = undef
+
   } else {
     fail("Class['apache::params']: Unsupported osfamily: ${::osfamily}")
   }

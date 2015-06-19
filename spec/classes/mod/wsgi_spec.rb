@@ -93,7 +93,7 @@ describe 'apache::mod::wsgi', :type => :class do
           :mod_path => '/foo/bar/baz',
         }
       end
-      it { expect { subject }.to raise_error Puppet::Error, /apache::mod::wsgi - both package_name and mod_path must be specified!/ }
+      it { expect { catalogue }.to raise_error Puppet::Error, /apache::mod::wsgi - both package_name and mod_path must be specified!/ }
     end
     describe "with mod_path but no package_name" do
       let :params do
@@ -101,7 +101,7 @@ describe 'apache::mod::wsgi', :type => :class do
           :package_name => '/foo/bar/baz',
         }
       end
-      it { expect { subject }.to raise_error Puppet::Error, /apache::mod::wsgi - both package_name and mod_path must be specified!/ }
+      it { expect { catalogue }.to raise_error Puppet::Error, /apache::mod::wsgi - both package_name and mod_path must be specified!/ }
     end
   end
   context "on a FreeBSD OS" do
@@ -123,5 +123,25 @@ describe 'apache::mod::wsgi', :type => :class do
       )
     }
     it { is_expected.to contain_package("www/mod_wsgi") }
+  end
+  context "on a Gentoo OS" do
+    let :facts do
+      {
+        :osfamily               => 'Gentoo',
+        :operatingsystem        => 'Gentoo',
+        :operatingsystemrelease => '3.16.1-gentoo',
+        :concat_basedir         => '/dne',
+        :id                     => 'root',
+        :kernel                 => 'Linux',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin',
+        :is_pe                  => false,
+      }
+    end
+    it { is_expected.to contain_class("apache::params") }
+    it { is_expected.to contain_class('apache::mod::wsgi').with(
+        'wsgi_socket_prefix' => nil
+      )
+    }
+    it { is_expected.to contain_package("www-apache/mod_wsgi") }
   end
 end

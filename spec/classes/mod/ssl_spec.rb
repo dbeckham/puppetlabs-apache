@@ -17,7 +17,7 @@ describe 'apache::mod::ssl', :type => :class do
         :is_pe                  => false,
       }
     end
-    it { expect { subject }.to raise_error(Puppet::Error, /Unsupported osfamily:/) }
+    it { expect { catalogue }.to raise_error(Puppet::Error, /Unsupported osfamily:/) }
   end
 
   context 'on a RedHat OS' do
@@ -83,6 +83,23 @@ describe 'apache::mod::ssl', :type => :class do
     it { is_expected.to contain_apache__mod('ssl') }
   end
 
+  context 'on a Gentoo OS' do
+    let :facts do
+      {
+        :osfamily               => 'Gentoo',
+        :operatingsystem        => 'Gentoo',
+        :operatingsystemrelease => '3.16.1-gentoo',
+        :concat_basedir         => '/dne',
+        :id                     => 'root',
+        :kernel                 => 'Linux',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin',
+        :is_pe                  => false,
+      }
+    end
+    it { is_expected.to contain_class('apache::params') }
+    it { is_expected.to contain_apache__mod('ssl') }
+  end
+
   # Template config doesn't vary by distro
   context "on all distros" do
     let :facts do
@@ -111,18 +128,22 @@ describe 'apache::mod::ssl', :type => :class do
       it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLPassPhraseDialog exec:\/path\/to\/program$/)}
     end
 
-    context 'setting ssl_random_seeds' do
+    context 'setting ssl_random_seed_bytes' do
       let :params do
         {
-          :ssl_random_seeds => ['startup builtin',
-                                'startup file:/dev/random 256',
-                                'connect file:/dev/urandom 1024' ],
-         }
+          :ssl_random_seed_bytes => '1024',
+        }
       end
-      it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLRandomSeed startup builtin$/)}
-      it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLRandomSeed startup file:\/dev\/random 256$/)}
-      it { is_expected.to contain_file('ssl.conf').with_content(/^  SSLRandomSeed connect file:\/dev\/urandom 1024$/)}
+      it { is_expected.to contain_file('ssl.conf').with_content(%r{^  SSLRandomSeed startup file:/dev/urandom 1024$})}
     end
 
+    context 'setting ssl_openssl_conf_cmd' do
+      let :params do
+        {
+          :ssl_openssl_conf_cmd => 'DHParameters "foo.pem"',
+        }
+      end
+      it { is_expected.to contain_file('ssl.conf').with_content(/^\s+SSLOpenSSLConfCmd DHParameters "foo.pem"$/)}
+    end
   end
 end

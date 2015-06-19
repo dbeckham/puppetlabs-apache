@@ -26,6 +26,7 @@ define apache::vhost(
   $ssl_verify_client           = undef,
   $ssl_verify_depth            = undef,
   $ssl_options                 = undef,
+  $ssl_openssl_conf_cmd        = undef,
   $ssl_proxyengine             = false,
   $priority                    = undef,
   $default_vhost               = false,
@@ -57,7 +58,10 @@ define apache::vhost(
   $scriptalias                 = undef,
   $scriptaliases               = [],
   $proxy_dest                  = undef,
+  $proxy_dest_match            = undef,
+  $proxy_dest_reverse_match    = undef,
   $proxy_pass                  = undef,
+  $proxy_pass_match            = undef,
   $suphp_addhandler            = $::apache::params::suphp_addhandler,
   $suphp_engine                = $::apache::params::suphp_engine,
   $suphp_configpath            = $::apache::params::suphp_configpath,
@@ -66,6 +70,7 @@ define apache::vhost(
   $php_admin_flags             = {},
   $php_admin_values            = {},
   $no_proxy_uris               = [],
+  $no_proxy_uris_match         = [],
   $proxy_preserve_host         = false,
   $proxy_error_override        = false,
   $redirect_source             = '/',
@@ -105,6 +110,7 @@ define apache::vhost(
   $allow_encoded_slashes       = undef,
   $suexec_user_group           = undef,
   $passenger_app_root          = undef,
+  $passenger_app_env           = undef,
   $passenger_ruby              = undef,
   $passenger_min_instances     = undef,
   $passenger_start_timeout     = undef,
@@ -120,7 +126,7 @@ define apache::vhost(
     fail('You must include the apache base class before using any apache defined resources')
   }
 
-  $apache_name = $::apache::params::apache_name
+  $apache_name = $::apache::apache_name
 
   validate_re($ensure, '^(present|absent)$',
   "${ensure} is not supported for ensure.
@@ -181,8 +187,7 @@ define apache::vhost(
   Allowed values are 'directory' and 'absent'.")
 
   if $log_level {
-    validate_re($log_level, '^(emerg|alert|crit|error|warn|notice|info|debug)$',
-    "Log level '${log_level}' is not one of the supported Apache HTTP Server log levels.")
+    validate_apache_log_level($log_level)
   }
 
   if $access_log_file and $access_log_pipe {
@@ -225,7 +230,7 @@ define apache::vhost(
     include ::apache::mod::suexec
   }
 
-  if $passenger_app_root or $passenger_ruby or $passenger_min_instances or $passenger_start_timeout or $passenger_pre_start {
+  if $passenger_app_root or $passenger_app_env or $passenger_ruby or $passenger_min_instances or $passenger_start_timeout or $passenger_pre_start {
     include ::apache::mod::passenger
   }
 
@@ -357,13 +362,13 @@ define apache::vhost(
 
   # Load mod_alias if needed and not yet loaded
   if ($scriptalias or $scriptaliases != []) or ($redirect_source and $redirect_dest) {
-    if ! defined(Class['apache::mod::alias']) {
+    if ! defined(Class['apache::mod::alias'])  and ($ensure == 'present') {
       include ::apache::mod::alias
     }
   }
 
   # Load mod_proxy if needed and not yet loaded
-  if ($proxy_dest or $proxy_pass) {
+  if ($proxy_dest or $proxy_pass or $proxy_pass_match or $proxy_dest_match) {
     if ! defined(Class['apache::mod::proxy']) {
       include ::apache::mod::proxy
     }
@@ -620,9 +625,10 @@ define apache::vhost(
   # Template uses:
   # - $proxy_dest
   # - $proxy_pass
+  # - $proxy_pass_match
   # - $proxy_preserve_host
   # - $no_proxy_uris
-  if $proxy_dest or $proxy_pass {
+  if $proxy_dest or $proxy_pass or $proxy_pass_match {
     concat::fragment { "${name}-proxy":
       target  => "${priority_real}${filename}.conf",
       order   => 140,
@@ -678,7 +684,7 @@ define apache::vhost(
   # Template uses:
   # - $scriptaliases
   # - $scriptalias
-  if $scriptaliases and ! empty($scriptaliases) {
+  if ( $scriptalias or $scriptaliases != [] ) {
     concat::fragment { "${name}-scriptalias":
       target  => "${priority_real}${filename}.conf",
       order   => 180,
@@ -724,6 +730,7 @@ define apache::vhost(
   # - $ssl_verify_client
   # - $ssl_verify_depth
   # - $ssl_options
+  # - $ssl_openssl_conf_cmd
   # - $apache_version
   if $ssl {
     concat::fragment { "${name}-ssl":
@@ -839,11 +846,12 @@ define apache::vhost(
 
   # Template uses:
   # - $passenger_app_root
+  # - $passenger_app_env
   # - $passenger_ruby
   # - $passenger_min_instances
   # - $passenger_start_timeout
   # - $passenger_pre_start
-  if $passenger_app_root or $passenger_ruby or $passenger_min_instances or $passenger_start_timeout or $passenger_pre_start {
+  if $passenger_app_root or $passenger_app_env or $passenger_ruby or $passenger_min_instances or $passenger_start_timeout or $passenger_pre_start {
     concat::fragment { "${name}-passenger":
       target  => "${priority_real}${filename}.conf",
       order   => 300,

@@ -62,9 +62,14 @@ class apache::mod::worker (
         }
       }
     }
-    'debian', 'freebsd': {
+    'debian', 'freebsd', 'Suse': {
       ::apache::mpm{ 'worker':
         apache_version => $apache_version,
+      }
+    }
+    'gentoo': {
+      ::portage::makeconf { 'apache2_mpms':
+        content => 'worker',
       }
     }
     default: {

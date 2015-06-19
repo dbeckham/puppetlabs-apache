@@ -57,7 +57,7 @@ describe 'apache::service', :type => :class do
       let (:params) {{ :service_enable => 'not-a-boolean' }}
 
       it 'should fail' do
-        expect { subject }.to raise_error(Puppet::Error, /is not a boolean/)
+        expect { catalogue }.to raise_error(Puppet::Error, /is not a boolean/)
       end
     end
 
@@ -65,7 +65,7 @@ describe 'apache::service', :type => :class do
       let (:params) {{ :service_manage => 'not-a-boolean' }}
 
       it 'should fail' do
-        expect { subject }.to raise_error(Puppet::Error, /is not a boolean/)
+        expect { catalogue }.to raise_error(Puppet::Error, /is not a boolean/)
       end
     end
 
@@ -91,50 +91,20 @@ describe 'apache::service', :type => :class do
       let (:params) {{ :service_ensure => 'UNDEF' }}
       it { is_expected.to contain_service("httpd").without_ensure }
     end
-  end
 
-
-  context "on a RedHat 5 OS" do
-    let :facts do
-      {
-        :osfamily               => 'RedHat',
-        :operatingsystemrelease => '5',
-        :concat_basedir         => '/dne',
-        :operatingsystem        => 'RedHat',
-        :id                     => 'root',
-        :kernel                 => 'Linux',
-        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-        :is_pe                  => false,
-      }
+    context "with $service_restart unset" do
+      it { is_expected.to contain_service("httpd").without_restart }
     end
-    it { is_expected.to contain_service("httpd").with(
-      'name'      => 'httpd',
-      'ensure'    => 'running',
-      'enable'    => 'true'
+
+    context "with $service_restart => '/usr/sbin/apachectl graceful'" do
+     let (:params) {{ :service_restart => '/usr/sbin/apachectl graceful' }}
+     it { is_expected.to contain_service("httpd").with(
+        'restart' => '/usr/sbin/apachectl graceful'
       )
-    }
+     }
+    end
   end
 
-  context "on a FreeBSD 5 OS" do
-    let :facts do
-      {
-        :osfamily               => 'FreeBSD',
-        :operatingsystemrelease => '9',
-        :concat_basedir         => '/dne',
-        :operatingsystem        => 'FreeBSD',
-        :id                     => 'root',
-        :kernel                 => 'FreeBSD',
-        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-        :is_pe                  => false,
-      }
-    end
-    it { is_expected.to contain_service("httpd").with(
-      'name'      => 'apache24',
-      'ensure'    => 'running',
-      'enable'    => 'true'
-      )
-    }
-  end
 
   context "on a RedHat 5 OS, do not manage service" do
     let :facts do
@@ -161,4 +131,45 @@ describe 'apache::service', :type => :class do
     end
   end
 
+  context "on a FreeBSD 5 OS" do
+    let :facts do
+      {
+        :osfamily               => 'FreeBSD',
+        :operatingsystemrelease => '9',
+        :concat_basedir         => '/dne',
+        :operatingsystem        => 'FreeBSD',
+        :id                     => 'root',
+        :kernel                 => 'FreeBSD',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        :is_pe                  => false,
+      }
+    end
+    it { is_expected.to contain_service("httpd").with(
+      'name'      => 'apache24',
+      'ensure'    => 'running',
+      'enable'    => 'true'
+      )
+    }
+  end
+
+  context "on a Gentoo OS" do
+    let :facts do
+      {
+        :osfamily               => 'Gentoo',
+        :operatingsystem        => 'Gentoo',
+        :operatingsystemrelease => '3.16.1-gentoo',
+        :concat_basedir         => '/dne',
+        :id                     => 'root',
+        :kernel                 => 'Linux',
+        :path                   => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin',
+        :is_pe                  => false,
+      }
+    end
+    it { is_expected.to contain_service("httpd").with(
+      'name'      => 'apache2',
+      'ensure'    => 'running',
+      'enable'    => 'true'
+      )
+    }
+  end
 end

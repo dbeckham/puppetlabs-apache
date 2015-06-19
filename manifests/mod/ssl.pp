@@ -1,22 +1,22 @@
 class apache::mod::ssl (
-  $ssl_compression        = false,
-  $ssl_options            = [ 'StdEnvVars' ],
-  $ssl_cipher             = 'HIGH:MEDIUM:!aNULL:!MD5',
-  $ssl_protocol           = [ 'all', '-SSLv2', '-SSLv3' ],
-  $ssl_pass_phrase_dialog = 'builtin',
-  $ssl_random_seeds       = [
-    'startup builtin',
-    'startup file:/dev/urandom 512',
-    'connect builtin',
-    'connect file:/dev/urandom 512',
-  ],
-  $apache_version         = $::apache::apache_version,
-  $package_name           = undef,
+  $ssl_compression         = false,
+  $ssl_cryptodevice        = 'builtin',
+  $ssl_options             = [ 'StdEnvVars' ],
+  $ssl_openssl_conf_cmd    = undef,
+  $ssl_cipher              = 'HIGH:MEDIUM:!aNULL:!MD5',
+  $ssl_honorcipherorder    = 'On',
+  $ssl_protocol            = [ 'all', '-SSLv2', '-SSLv3' ],
+  $ssl_pass_phrase_dialog  = 'builtin',
+  $ssl_random_seed_bytes   = '512',
+  $ssl_sessioncachetimeout = '300',
+  $apache_version          = $::apache::apache_version,
+  $package_name            = undef,
 ) {
   $session_cache = $::osfamily ? {
     'debian'  => "\${APACHE_RUN_DIR}/ssl_scache(512000)",
     'redhat'  => '/var/cache/mod_ssl/scache(512000)',
     'freebsd' => '/var/run/ssl_scache(512000)',
+    'gentoo'  => '/var/run/ssl_scache(512000)',
   }
 
   case $::osfamily {
@@ -35,6 +35,9 @@ class apache::mod::ssl (
     'freebsd': {
       $ssl_mutex = 'default'
     }
+    'gentoo': {
+      $ssl_mutex = 'default'
+    }
     default: {
       fail("Unsupported osfamily ${::osfamily}")
     }
@@ -51,10 +54,15 @@ class apache::mod::ssl (
   # Template uses
   #
   # $ssl_compression
+  # $ssl_cryptodevice
+  # $ssl_cipher
+  # $ssl_honorcipherorder
   # $ssl_options
-  # $session_cache,
+  # $ssl_openssl_conf_cmd
+  # $session_cache
   # $ssl_mutex
-  # $ssl_random_seeds
+  # $ssl_random_seed_bytes
+  # $ssl_sessioncachetimeout
   # $apache_version
   #
   file { 'ssl.conf':

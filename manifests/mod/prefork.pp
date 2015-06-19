@@ -60,9 +60,14 @@ class apache::mod::prefork (
         }
       }
     }
-    'debian', 'freebsd' : {
+    'debian', 'freebsd', 'Suse' : {
       ::apache::mpm{ 'prefork':
         apache_version => $apache_version,
+      }
+    }
+    'gentoo': {
+      ::portage::makeconf { 'apache2_mpms':
+        content => 'prefork',
       }
     }
     default: {
